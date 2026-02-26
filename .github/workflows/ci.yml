@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  detect_changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      precheck: ${{ steps.filter.outputs.precheck }}
+      unit: ${{ steps.filter.outputs.unit }}
+      integration: ${{ steps.filter.outputs.integration }}
+      property: ${{ steps.filter.outputs.property }}
+      publish: ${{ steps.filter.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            precheck:
+              - "src/**"
+              - "tests/**"
+              - "package.json"
+              - "package-lock.json"
+              - "tsconfig.json"
+              - "tsconfig.build.json"
+              - "README.md"
+              - "docs/**"
+              - ".github/workflows/**"
+            unit:
+              - "src/**"
+              - "tests/search-client.test.ts"
+              - "tests/fetch-search-provider.test.ts"
+              - "tests/vector-tfidf.unit.test.ts"
+              - "package.json"
+              - "package-lock.json"
+              - "tsconfig.json"
+            integration:
+              - "src/**"
+              - "tests/search-client.integration.test.ts"
+              - "package.json"
+              - "package-lock.json"
+              - "tsconfig.json"
+            property:
+              - "src/vector/**"
+              - "tests/vector-tfidf.property.test.ts"
+              - "package.json"
+              - "package-lock.json"
+              - "tsconfig.json"
+            publish:
+              - "package.json"
+
+  precheck:
+    name: Precheck (format + typecheck)
+    runs-on: ubuntu-latest
+    needs: detect_changes
+    if: ${{ needs.detect_changes.outputs.precheck == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run precheck
+
+  test_unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs:
+      - detect_changes
+      - precheck
+    if: ${{ needs.detect_changes.outputs.unit == 'true' && needs.precheck.result == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  test_integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs:
+      - detect_changes
+      - precheck
+    if: ${{ needs.detect_changes.outputs.integration == 'true' && needs.precheck.result == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration
+
+  test_property:
+    name: Property-based tests
+    runs-on: ubuntu-latest
+    needs:
+      - detect_changes
+      - precheck
+    if: ${{ needs.detect_changes.outputs.property == 'true' && needs.precheck.result == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:property
+
+  publish_npm:
+    name: Publish npm package
+    runs-on: ubuntu-latest
+    needs:
+      - detect_changes
+      - precheck
+      - test_unit
+      - test_integration
+      - test_property
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect_changes.outputs.publish == 'true' && needs.precheck.result == 'success' && (needs.test_unit.result == 'success' || needs.test_unit.result == 'skipped') && (needs.test_integration.result == 'success' || needs.test_integration.result == 'skipped') && (needs.test_property.result == 'success' || needs.test_property.result == 'skipped') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: npm run build
+      - id: package_meta
+        run: |
+          node -e "const pkg = require('./package.json'); console.log('name=' + pkg.name); console.log('version=' + pkg.version);" >> "$GITHUB_OUTPUT"
+      - id: should_publish
+        run: |
+          set -euo pipefail
+          if npm view "${{ steps.package_meta.outputs.name }}@${{ steps.package_meta.outputs.version }}" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version already exists on npm, skip publishing."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: ${{ steps.should_publish.outputs.publish == 'true' }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - if: ${{ steps.should_publish.outputs.publish != 'true' }}
+        run: echo "Publish skipped because this version already exists."

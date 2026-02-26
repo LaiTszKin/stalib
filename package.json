@@ -1,0 +1,39 @@
+{
+  "name": "stalib",
+  "version": "0.1.0",
+  "description": "Browser-first web search library with local vector ranking",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "precheck": "npm run format:check && npm run typecheck",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/search-client.test.ts tests/fetch-search-provider.test.ts tests/vector-tfidf.unit.test.ts",
+    "test:integration": "vitest run tests/search-client.integration.test.ts",
+    "test:property": "vitest run tests/vector-tfidf.property.test.ts",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "browser",
+    "search",
+    "vector",
+    "tf-idf",
+    "typescript"
+  ],
+  "author": "Yamiyorunoshura",
+  "license": "MIT",
+  "devDependencies": {
+    "fast-check": "^4.3.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
