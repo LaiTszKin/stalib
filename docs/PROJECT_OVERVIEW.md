@@ -1,8 +1,8 @@
 # Project Overview
 
-## What stalib is
+## What stalib-ai-search is
 
-`stalib` is a browser-oriented search utility library that combines:
+`stalib-ai-search` is a browser-oriented search utility library that combines:
 
 1. Keyword-based web search through pluggable providers
 2. Local vector ranking based on TF-IDF and cosine similarity

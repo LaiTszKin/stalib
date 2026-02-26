@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to stalib.
+Thanks for contributing to stalib-ai-search.
 
 ## Workflow
 

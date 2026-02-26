@@ -1,8 +1,8 @@
-# stalib
+# stalib-ai-search
 
 A browser-first TypeScript web search library for AI workflows.
 
-`stalib` is primarily built for AI web search scenarios. It takes a keyword, fetches results from a pluggable search provider, performs lightweight vector chunking over returned text, and re-ranks the chunks with local TF-IDF vector matching.
+`stalib-ai-search` is primarily built for AI web search scenarios. It takes a keyword, fetches results from a pluggable search provider, performs lightweight vector chunking over returned text, and re-ranks the chunks with local TF-IDF vector matching.
 
 ## Why this project
 
@@ -24,13 +24,13 @@ A browser-first TypeScript web search library for AI workflows.
 ### Install the published package (after CI publish)
 
 ```bash
-npm install stalib
+npm install stalib-ai-search
 ```
 
 Pin a specific version if needed:
 
 ```bash
-npm install stalib@0.1.0
+npm install stalib-ai-search@0.1.0
 ```
 
 ## Quick Start
@@ -38,7 +38,7 @@ npm install stalib@0.1.0
 ### Custom provider
 
 ```ts
-import { SearchClient, type SearchProvider } from "stalib";
+import { SearchClient, type SearchProvider } from "stalib-ai-search";
 
 const provider: SearchProvider = {
   async search({ query, limit, signal }) {
@@ -68,7 +68,7 @@ console.log(result.items);
 ### Built-in DuckDuckGo provider
 
 ```ts
-import { SearchClient, createDuckDuckGoProvider } from "stalib";
+import { SearchClient, createDuckDuckGoProvider } from "stalib-ai-search";
 
 const client = new SearchClient({
   provider: createDuckDuckGoProvider(),

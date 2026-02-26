@@ -1,5 +1,5 @@
 {
-  "name": "stalib",
+  "name": "stalib-ai-search",
   "version": "0.1.0",
   "description": "Browser-first web search library with local vector ranking",
   "type": "module",
