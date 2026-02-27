@@ -120,4 +120,22 @@ describe("FetchSearchProvider", () => {
       url: "https://b.test",
     });
   });
+
+  it("mapResponse 回傳非陣列時會回傳 PROVIDER_ERROR", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ results: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new FetchSearchProvider({
+      endpoint: "https://example.com/search",
+      mapResponse: () => null as unknown as never[],
+    });
+
+    await expect(
+      provider.search({ query: "browser", limit: 2 }),
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+    });
+  });
 });
