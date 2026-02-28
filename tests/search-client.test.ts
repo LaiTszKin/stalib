@@ -89,4 +89,21 @@ describe("SearchClient (unit)", () => {
       code: "PROVIDER_ERROR",
     });
   });
+
+  it("provider 回傳筆數超過安全上限時回傳 PROVIDER_ERROR", async () => {
+    const provider: SearchProvider = {
+      search: vi.fn().mockResolvedValue(
+        Array.from({ length: 1001 }, (_, index) => ({
+          title: `title-${index}`,
+          snippet: "snippet",
+          url: `https://example.com/${index}`,
+        })),
+      ),
+    };
+    const client = new SearchClient({ provider });
+
+    await expect(client.search("browser")).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+    });
+  });
 });
