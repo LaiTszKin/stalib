@@ -10,6 +10,7 @@ import type {
 import { rankDocumentsByQuery } from "./vector/tfidf";
 
 const DEFAULT_LIMIT = 10;
+const MAX_PROVIDER_RESULTS = 1000;
 
 interface AbortContext {
   signal?: AbortSignal;
@@ -59,6 +60,12 @@ export class SearchClient {
         throw new SearchClientError(
           "PROVIDER_ERROR",
           "搜尋供應商回傳格式不正確。",
+        );
+      }
+      if (rawResults.length > MAX_PROVIDER_RESULTS) {
+        throw new SearchClientError(
+          "PROVIDER_ERROR",
+          `搜尋供應商回傳資料筆數超過安全上限（${MAX_PROVIDER_RESULTS}）。`,
         );
       }
 
