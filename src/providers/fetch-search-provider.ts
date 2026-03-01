@@ -1,4 +1,4 @@
-import { SearchClientError } from "../errors";
+import { SearchClientError, isSearchClientError } from "../errors";
 import type {
   SearchProvider,
   SearchProviderRequest,
@@ -70,8 +70,28 @@ export class FetchSearchProvider implements SearchProvider {
       );
     }
 
-    const payload = await response.json();
-    const mapped = this.mapResponse(payload, request);
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new SearchClientError("PROVIDER_ERROR", "搜尋供應商回傳格式不正確。", {
+        cause: error,
+      });
+    }
+
+    let mapped: SearchProviderResultItem[];
+    try {
+      mapped = this.mapResponse(payload, request);
+    } catch (error) {
+      if (isSearchClientError(error)) {
+        throw error;
+      }
+
+      throw new SearchClientError("PROVIDER_ERROR", "搜尋供應商回傳格式不正確。", {
+        cause: error,
+      });
+    }
+
     if (!Array.isArray(mapped)) {
       throw new SearchClientError(
         "PROVIDER_ERROR",
