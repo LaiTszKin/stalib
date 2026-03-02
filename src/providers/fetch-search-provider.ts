@@ -70,7 +70,18 @@ export class FetchSearchProvider implements SearchProvider {
       );
     }
 
-    const payload = await response.json();
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      throw new SearchClientError(
+        "PROVIDER_ERROR",
+        "搜尋供應商回傳格式不正確。",
+        {
+          cause: error,
+        },
+      );
+    }
     const mapped = this.mapResponse(payload, request);
     if (!Array.isArray(mapped)) {
       throw new SearchClientError(
