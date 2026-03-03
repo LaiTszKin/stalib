@@ -143,10 +143,29 @@ describe("FetchSearchProvider", () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response("not-json", { status: 200 }));
+
     vi.stubGlobal("fetch", fetchMock);
 
     const provider = new FetchSearchProvider({
       endpoint: "https://example.com/search",
+    });
+
+    await expect(
+      provider.search({ query: "browser", limit: 2 }),
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+    });
+  });
+
+  it("mapResponse 含有非物件項目時會回傳 PROVIDER_ERROR", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ results: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new FetchSearchProvider({
+      endpoint: "https://example.com/search",
+      mapResponse: () => [null as unknown as never],
     });
 
     await expect(
