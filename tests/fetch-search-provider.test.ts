@@ -138,4 +138,21 @@ describe("FetchSearchProvider", () => {
       code: "PROVIDER_ERROR",
     });
   });
+
+  it("回傳無法解析的 JSON 時會回傳 PROVIDER_ERROR", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("not-json", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new FetchSearchProvider({
+      endpoint: "https://example.com/search",
+    });
+
+    await expect(
+      provider.search({ query: "browser", limit: 2 }),
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+    });
+  });
 });

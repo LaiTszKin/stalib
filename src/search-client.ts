@@ -11,6 +11,12 @@ import { rankDocumentsByQuery } from "./vector/tfidf";
 
 const DEFAULT_LIMIT = 10;
 const MAX_PROVIDER_RESULTS = 1000;
+const MAX_QUERY_LENGTH = 2048;
+const MAX_TITLE_LENGTH = 4096;
+const MAX_SNIPPET_LENGTH = 16_384;
+const MAX_URL_LENGTH = 2048;
+const MAX_SOURCE_LENGTH = 128;
+const MAX_ID_LENGTH = 256;
 
 interface AbortContext {
   signal?: AbortSignal;
@@ -36,6 +42,12 @@ export class SearchClient {
     const query = keyword.trim();
     if (!query) {
       throw new SearchClientError("INVALID_QUERY", "keyword 不能是空白字串。");
+    }
+    if (query.length > MAX_QUERY_LENGTH) {
+      throw new SearchClientError(
+        "INVALID_QUERY",
+        `keyword 長度不可超過 ${MAX_QUERY_LENGTH} 字元。`,
+      );
     }
 
     const limit = parsePositiveInteger(
@@ -93,15 +105,15 @@ export function normalizeProviderResults(
 ): NormalizedSearchRecord[] {
   return rawResults
     .map((entry, index) => {
-      const title = sanitizeText(entry.title);
+      const title = sanitizeText(entry.title, MAX_TITLE_LENGTH);
       const url = sanitizeHttpUrl(entry.url);
       if (!title || !url) {
         return null;
       }
 
-      const snippet = sanitizeText(entry.snippet) ?? "";
-      const source = sanitizeText(entry.source) ?? "unknown";
-      const id = sanitizeText(entry.id) ?? `${index}:${url}`;
+      const snippet = sanitizeText(entry.snippet, MAX_SNIPPET_LENGTH) ?? "";
+      const source = sanitizeText(entry.source, MAX_SOURCE_LENGTH) ?? "unknown";
+      const id = sanitizeText(entry.id, MAX_ID_LENGTH) ?? `${index}:${url}`;
 
       return {
         id,
@@ -151,17 +163,25 @@ function rankResults(
     .map(({ originalIndex: _originalIndex, ...value }) => value);
 }
 
-function sanitizeText(value: unknown): string | undefined {
+function sanitizeText(value: unknown, maxLength?: number): string | undefined {
   if (typeof value !== "string") {
     return undefined;
   }
 
   const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  if (maxLength !== undefined && trimmed.length > maxLength) {
+    return undefined;
+  }
+
+  return trimmed;
 }
 
 function sanitizeHttpUrl(value: unknown): string | undefined {
-  const rawUrl = sanitizeText(value);
+  const rawUrl = sanitizeText(value, MAX_URL_LENGTH);
   if (!rawUrl) {
     return undefined;
   }

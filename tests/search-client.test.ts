@@ -42,6 +42,19 @@ describe("SearchClient (unit)", () => {
     expect(provider.search).not.toHaveBeenCalled();
   });
 
+  it("keyword 過長時回傳 INVALID_QUERY 並且不呼叫 provider", async () => {
+    const provider: SearchProvider = {
+      search: vi.fn(),
+    };
+    const client = new SearchClient({ provider });
+    const tooLongKeyword = "a".repeat(2049);
+
+    await expect(client.search(tooLongKeyword)).rejects.toMatchObject({
+      code: "INVALID_QUERY",
+    });
+    expect(provider.search).not.toHaveBeenCalled();
+  });
+
   it("timeout 會回傳 TIMEOUT", async () => {
     const provider = createAbortAwareProvider();
     const client = new SearchClient({ provider, defaultTimeoutMs: 5 });
@@ -105,5 +118,27 @@ describe("SearchClient (unit)", () => {
     await expect(client.search("browser")).rejects.toMatchObject({
       code: "PROVIDER_ERROR",
     });
+  });
+
+  it("provider 回傳過長 title/url 時會過濾該筆資料", async () => {
+    const provider: SearchProvider = {
+      search: vi.fn().mockResolvedValue([
+        {
+          title: "A".repeat(4097),
+          snippet: "snippet",
+          url: "https://example.com/valid",
+        },
+        {
+          title: "title",
+          snippet: "snippet",
+          url: `https://example.com/${"x".repeat(2100)}`,
+        },
+      ]),
+    };
+    const client = new SearchClient({ provider });
+
+    const response = await client.search("browser");
+    expect(response.metadata.total).toBe(0);
+    expect(response.items).toEqual([]);
   });
 });
