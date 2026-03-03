@@ -141,4 +141,20 @@ describe("SearchClient (unit)", () => {
     expect(response.metadata.total).toBe(0);
     expect(response.items).toEqual([]);
   });
+
+  it("provider 回傳過大可索引內容時回傳 PROVIDER_ERROR，避免記憶體與 CPU 被濫用", async () => {
+    const largePayload = Array.from({ length: 20 }, (_, index) => ({
+      title: `safe-title-${index}`,
+      snippet: "word ".repeat(3_000).trim(),
+      url: `https://example.com/${index}`,
+    }));
+    const provider: SearchProvider = {
+      search: vi.fn().mockResolvedValue(largePayload),
+    };
+    const client = new SearchClient({ provider });
+
+    await expect(client.search("browser")).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+    });
+  });
 });

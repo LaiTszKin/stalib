@@ -17,6 +17,7 @@ const MAX_SNIPPET_LENGTH = 16_384;
 const MAX_URL_LENGTH = 2048;
 const MAX_SOURCE_LENGTH = 128;
 const MAX_ID_LENGTH = 256;
+const MAX_TOTAL_INDEXABLE_CHARS = 250_000;
 
 interface AbortContext {
   signal?: AbortSignal;
@@ -82,6 +83,7 @@ export class SearchClient {
       }
 
       const normalizedResults = normalizeProviderResults(rawResults);
+      guardIndexableTextBudget(normalizedResults);
       const rankedItems = rankResults(query, normalizedResults).slice(0, limit);
 
       return {
@@ -97,6 +99,20 @@ export class SearchClient {
     } finally {
       abortContext.cleanup();
     }
+  }
+}
+
+function guardIndexableTextBudget(records: NormalizedSearchRecord[]): void {
+  const totalIndexableChars = records.reduce(
+    (sum, record) => sum + record.title.length + record.snippet.length,
+    0,
+  );
+
+  if (totalIndexableChars > MAX_TOTAL_INDEXABLE_CHARS) {
+    throw new SearchClientError(
+      "PROVIDER_ERROR",
+      `搜尋供應商回傳可索引文字量超過安全上限（${MAX_TOTAL_INDEXABLE_CHARS}）。`,
+    );
   }
 }
 
