@@ -92,6 +92,14 @@ export class FetchSearchProvider implements SearchProvider {
     }
 
     return mapped.map((item) => {
+      if (!isRecord(item)) {
+        throw new SearchClientError(
+          "PROVIDER_ERROR",
+          "搜尋供應商回傳格式不正確。",
+          { cause: item },
+        );
+      }
+
       if (item.source || !this.source) {
         return item;
       }
