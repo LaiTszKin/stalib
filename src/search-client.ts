@@ -106,7 +106,7 @@ export function normalizeProviderResults(
   return rawResults
     .map((entry, index) => {
       const title = sanitizeText(entry.title, MAX_TITLE_LENGTH);
-      const url = sanitizeText(entry.url, MAX_URL_LENGTH);
+      const url = sanitizeHttpUrl(entry.url);
       if (!title || !url) {
         return null;
       }
@@ -178,6 +178,26 @@ function sanitizeText(value: unknown, maxLength?: number): string | undefined {
   }
 
   return trimmed;
+}
+
+function sanitizeHttpUrl(value: unknown): string | undefined {
+  const rawUrl = sanitizeText(value, MAX_URL_LENGTH);
+  if (!rawUrl) {
+    return undefined;
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    return undefined;
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    return undefined;
+  }
+
+  return parsedUrl.toString();
 }
 
 function parsePositiveInteger(value: number, field: string): number {

@@ -47,6 +47,35 @@ describe("SearchClient (integration)", () => {
     expect(result.items).toEqual([]);
   });
 
+  it("會過濾非 http/https 的 URL，避免注入惡意連結", async () => {
+    const provider: SearchProvider = {
+      search: vi.fn().mockResolvedValue([
+        {
+          title: "bad js",
+          snippet: "payload",
+          url: "javascript:alert(1)",
+        },
+        {
+          title: "bad data",
+          snippet: "payload",
+          url: "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+        },
+        {
+          title: "safe",
+          snippet: "safe payload",
+          url: "https://example.com/safe",
+        },
+      ]),
+    };
+
+    const client = new SearchClient({ provider });
+    const result = await client.search("payload", { limit: 5 });
+
+    expect(result.metadata.total).toBe(1);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].url).toBe("https://example.com/safe");
+  });
+
   it("provider 拋出 TypeError 時映射成 NETWORK_ERROR", async () => {
     const provider: SearchProvider = {
       search: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
