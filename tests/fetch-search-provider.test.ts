@@ -15,6 +15,18 @@ afterEach(() => {
 });
 
 describe("FetchSearchProvider", () => {
+  it("endpoint 非法時回傳 INVALID_OPTIONS", async () => {
+    const provider = new FetchSearchProvider({
+      endpoint: "not-a-url",
+    });
+
+    await expect(
+      provider.search({ query: "browser", limit: 2 }),
+    ).rejects.toMatchObject({
+      code: "INVALID_OPTIONS",
+    });
+  });
+
   it("會以 fetch 發送查詢並套用預設 source", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
