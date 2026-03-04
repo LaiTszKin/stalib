@@ -74,9 +74,13 @@ export class FetchSearchProvider implements SearchProvider {
     try {
       payload = await response.json();
     } catch (error) {
-      throw new SearchClientError("PROVIDER_ERROR", "搜尋供應商回傳格式不正確。", {
-        cause: error,
-      });
+      throw new SearchClientError(
+        "PROVIDER_ERROR",
+        "搜尋供應商回傳格式不正確。",
+        {
+          cause: error,
+        },
+      );
     }
 
     let mapped: SearchProviderResultItem[];
@@ -87,9 +91,13 @@ export class FetchSearchProvider implements SearchProvider {
         throw error;
       }
 
-      throw new SearchClientError("PROVIDER_ERROR", "搜尋供應商回傳格式不正確。", {
-        cause: error,
-      });
+      throw new SearchClientError(
+        "PROVIDER_ERROR",
+        "搜尋供應商回傳格式不正確。",
+        {
+          cause: error,
+        },
+      );
     }
 
     if (!Array.isArray(mapped)) {
