@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { SearchClientError } from "../src/errors";
 import { FetchSearchProvider } from "../src/providers/fetch-search-provider";
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -15,6 +16,30 @@ afterEach(() => {
 });
 
 describe("FetchSearchProvider", () => {
+  it("預設阻擋 localhost / 私有網路 endpoint，避免 SSRF", () => {
+    expectInvalidEndpoint("http://localhost:3000/search");
+    expectInvalidEndpoint("http://127.0.0.1:8080/search");
+    expectInvalidEndpoint("http://169.254.169.254/latest/meta-data");
+    expectInvalidEndpoint("http://[::1]/search");
+  });
+
+  it("allowPrivateNetwork=true 時可顯式允許私網 endpoint", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        jsonResponse({ results: [{ title: "A", url: "https://a.test" }] }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new FetchSearchProvider({
+      endpoint: "http://127.0.0.1:8080/search",
+      allowPrivateNetwork: true,
+    });
+
+    await provider.search({ query: "browser", limit: 4 });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("會以 fetch 發送查詢並套用預設 source", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -175,3 +200,15 @@ describe("FetchSearchProvider", () => {
     });
   });
 });
+
+function expectInvalidEndpoint(endpoint: string): void {
+  let thrown: unknown;
+  try {
+    new FetchSearchProvider({ endpoint });
+  } catch (error) {
+    thrown = error;
+  }
+
+  expect(thrown).toBeInstanceOf(SearchClientError);
+  expect((thrown as SearchClientError).code).toBe("INVALID_OPTIONS");
+}
