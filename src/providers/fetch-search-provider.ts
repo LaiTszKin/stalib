@@ -12,6 +12,7 @@ type ResponseMapper = (
 
 export interface FetchSearchProviderOptions {
   endpoint: string;
+  allowPrivateNetwork?: boolean;
   queryParam?: string;
   limitParam?: string | null;
   source?: string;
@@ -30,7 +31,10 @@ export class FetchSearchProvider implements SearchProvider {
   private readonly mapResponse: ResponseMapper;
 
   constructor(options: FetchSearchProviderOptions) {
-    this.endpoint = options.endpoint;
+    this.endpoint = validateEndpoint(
+      options.endpoint,
+      options.allowPrivateNetwork ?? false,
+    );
     this.queryParam = options.queryParam ?? "q";
     this.limitParam = options.limitParam ?? "limit";
     this.source = options.source;
@@ -110,6 +114,95 @@ export class FetchSearchProvider implements SearchProvider {
       };
     });
   }
+}
+
+function validateEndpoint(
+  endpoint: string,
+  allowPrivateNetwork: boolean,
+): string {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(endpoint);
+  } catch {
+    throw new SearchClientError(
+      "INVALID_OPTIONS",
+      "endpoint 必須是合法的 URL。",
+    );
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    throw new SearchClientError(
+      "INVALID_OPTIONS",
+      "endpoint 僅支援 http 或 https 協定。",
+    );
+  }
+
+  if (!allowPrivateNetwork && isPrivateOrLocalHost(parsedUrl.hostname)) {
+    throw new SearchClientError(
+      "INVALID_OPTIONS",
+      "endpoint 不可指向本機或私有網路位址；若為受控環境請設定 allowPrivateNetwork=true。",
+    );
+  }
+
+  return parsedUrl.toString();
+}
+
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (
+    normalized === "localhost" ||
+    normalized.endsWith(".localhost") ||
+    normalized.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  return isPrivateIpv4(normalized) || isPrivateIpv6(normalized);
+}
+
+function isPrivateIpv4(hostname: string): boolean {
+  const parts = hostname.split(".");
+  if (parts.length !== 4) {
+    return false;
+  }
+
+  const octets = parts.map((part) => Number(part));
+  if (
+    octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+  ) {
+    return false;
+  }
+
+  const [first, second] = octets;
+  if (first === 10) return true;
+  if (first === 127) return true;
+  if (first === 169 && second === 254) return true;
+  if (first === 172 && second >= 16 && second <= 31) return true;
+  if (first === 192 && second === 168) return true;
+  if (first === 100 && second >= 64 && second <= 127) return true;
+  if (first === 0) return true;
+  return false;
+}
+
+function isPrivateIpv6(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (!normalized.includes(":")) {
+    return false;
+  }
+
+  if (normalized === "::1" || normalized === "::") {
+    return true;
+  }
+
+  return (
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe80:")
+  );
 }
 
 function defaultResponseMapper(payload: unknown): SearchProviderResultItem[] {
