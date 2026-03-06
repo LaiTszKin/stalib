@@ -15,6 +15,7 @@ export interface FetchSearchProviderOptions {
   queryParam?: string;
   limitParam?: string | null;
   source?: string;
+  allowPrivateNetwork?: boolean;
   headers?: HeadersInit;
   requestInit?: Omit<RequestInit, "method" | "signal">;
   mapResponse?: ResponseMapper;
@@ -25,12 +26,17 @@ export class FetchSearchProvider implements SearchProvider {
   private readonly queryParam: string;
   private readonly limitParam: string | null;
   private readonly source?: string;
+  private readonly allowPrivateNetwork: boolean;
   private readonly headers?: HeadersInit;
   private readonly requestInit?: Omit<RequestInit, "method" | "signal">;
   private readonly mapResponse: ResponseMapper;
 
   constructor(options: FetchSearchProviderOptions) {
-    this.endpoint = options.endpoint;
+    this.allowPrivateNetwork = options.allowPrivateNetwork ?? false;
+    this.endpoint = sanitizeEndpoint(
+      options.endpoint,
+      this.allowPrivateNetwork,
+    );
     this.queryParam = options.queryParam ?? "q";
     this.limitParam = options.limitParam ?? "limit";
     this.source = options.source;
@@ -138,4 +144,92 @@ function defaultResponseMapper(payload: unknown): SearchProviderResultItem[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function sanitizeEndpoint(
+  endpoint: string,
+  allowPrivateNetwork: boolean,
+): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new SearchClientError("INVALID_OPTIONS", "endpoint 必須是合法 URL。");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new SearchClientError(
+      "INVALID_OPTIONS",
+      "endpoint 僅支援 http/https。",
+    );
+  }
+
+  if (parsed.username || parsed.password) {
+    throw new SearchClientError(
+      "INVALID_OPTIONS",
+      "endpoint 不可包含帳號密碼資訊。",
+    );
+  }
+
+  if (!allowPrivateNetwork && isPrivateNetworkHost(parsed.hostname)) {
+    throw new SearchClientError(
+      "INVALID_OPTIONS",
+      "endpoint 不可為本機或私有網段位址。",
+    );
+  }
+
+  return parsed.toString();
+}
+
+function isPrivateNetworkHost(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (
+    normalized === "localhost" ||
+    normalized.endsWith(".localhost") ||
+    normalized === "[::1]" ||
+    normalized === "::1"
+  ) {
+    return true;
+  }
+
+  const ipv4 = parseIPv4(normalized);
+  if (!ipv4) {
+    return false;
+  }
+
+  const [a, b] = ipv4;
+  return (
+    a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function parseIPv4(hostname: string): number[] | null {
+  const segments = hostname.split(".");
+  if (segments.length !== 4) {
+    return null;
+  }
+
+  const values: number[] = [];
+  for (const segment of segments) {
+    if (!/^\d+$/.test(segment)) {
+      return null;
+    }
+
+    const value = Number(segment);
+    if (!Number.isInteger(value) || value < 0 || value > 255) {
+      return null;
+    }
+    values.push(value);
+  }
+
+  return values;
 }

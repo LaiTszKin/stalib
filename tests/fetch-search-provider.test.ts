@@ -174,4 +174,36 @@ describe("FetchSearchProvider", () => {
       code: "PROVIDER_ERROR",
     });
   });
+
+  it("預設會拒絕私有網段 endpoint 以降低 SSRF 風險", () => {
+    let error: unknown;
+    try {
+      new FetchSearchProvider({
+        endpoint: "http://127.0.0.1:8080/search",
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toMatchObject({
+      code: "INVALID_OPTIONS",
+    });
+  });
+
+  it("允許顯式放行私有網段 endpoint", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        jsonResponse({ results: [{ title: "A", url: "https://a.test" }] }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new FetchSearchProvider({
+      endpoint: "http://127.0.0.1:8080/search",
+      allowPrivateNetwork: true,
+    });
+
+    await provider.search({ query: "browser", limit: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
