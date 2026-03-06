@@ -42,7 +42,16 @@ export class FetchSearchProvider implements SearchProvider {
   async search(
     request: SearchProviderRequest,
   ): Promise<SearchProviderResultItem[]> {
-    const url = new URL(this.endpoint);
+    let url: URL;
+    try {
+      url = new URL(this.endpoint);
+    } catch (error) {
+      throw new SearchClientError(
+        "INVALID_OPTIONS",
+        "endpoint 必須是合法的 URL。",
+        { cause: error },
+      );
+    }
     url.searchParams.set(this.queryParam, request.query);
 
     if (this.limitParam) {
