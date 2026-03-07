@@ -198,11 +198,49 @@ function isPrivateIpv6(hostname: string): boolean {
     return true;
   }
 
+  const mappedIpv4 = parseIpv4MappedIpv6(normalized);
+  if (mappedIpv4 && isPrivateIpv4(mappedIpv4)) {
+    return true;
+  }
+
   return (
     normalized.startsWith("fc") ||
     normalized.startsWith("fd") ||
     normalized.startsWith("fe80:")
   );
+}
+
+function parseIpv4MappedIpv6(hostname: string): string | null {
+  if (!hostname.startsWith("::ffff:")) {
+    return null;
+  }
+
+  const suffix = hostname.slice("::ffff:".length);
+  if (suffix.includes(".")) {
+    return suffix;
+  }
+
+  const groups = suffix.split(":");
+  if (groups.length !== 2) {
+    return null;
+  }
+
+  const high = Number.parseInt(groups[0], 16);
+  const low = Number.parseInt(groups[1], 16);
+  if (!Number.isInteger(high) || !Number.isInteger(low)) {
+    return null;
+  }
+  if (high < 0 || high > 0xffff || low < 0 || low > 0xffff) {
+    return null;
+  }
+
+  const octets = [
+    (high >> 8) & 0xff,
+    high & 0xff,
+    (low >> 8) & 0xff,
+    low & 0xff,
+  ];
+  return octets.join(".");
 }
 
 function defaultResponseMapper(payload: unknown): SearchProviderResultItem[] {
