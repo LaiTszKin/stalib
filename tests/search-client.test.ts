@@ -42,6 +42,25 @@ describe("SearchClient (unit)", () => {
     expect(provider.search).not.toHaveBeenCalled();
   });
 
+  it("keyword 非字串時回傳 INVALID_QUERY 並且不呼叫 provider", async () => {
+    const provider: SearchProvider = {
+      search: vi.fn(),
+    };
+    const client = new SearchClient({ provider });
+
+    await expect(
+      client.search(null as unknown as string),
+    ).rejects.toMatchObject({
+      code: "INVALID_QUERY",
+    });
+    await expect(
+      client.search(123 as unknown as string),
+    ).rejects.toMatchObject({
+      code: "INVALID_QUERY",
+    });
+    expect(provider.search).not.toHaveBeenCalled();
+  });
+
   it("keyword 過長時回傳 INVALID_QUERY 並且不呼叫 provider", async () => {
     const provider: SearchProvider = {
       search: vi.fn(),

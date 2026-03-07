@@ -39,6 +39,10 @@ export class SearchClient {
     keyword: string,
     options: SearchOptions = {},
   ): Promise<SearchResponse> {
+    if (typeof keyword !== "string") {
+      throw new SearchClientError("INVALID_QUERY", "keyword 必須是字串。");
+    }
+
     const query = keyword.trim();
     if (!query) {
       throw new SearchClientError("INVALID_QUERY", "keyword 不能是空白字串。");
