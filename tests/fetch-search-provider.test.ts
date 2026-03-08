@@ -21,6 +21,8 @@ describe("FetchSearchProvider", () => {
     expectInvalidEndpoint("http://127.0.0.1:8080/search");
     expectInvalidEndpoint("http://169.254.169.254/latest/meta-data");
     expectInvalidEndpoint("http://[::1]/search");
+    expectInvalidEndpoint("http://[::ffff:127.0.0.1]/search");
+    expectInvalidEndpoint("http://[fe90::1]/search");
   });
 
   it("allowPrivateNetwork=true 時可顯式允許私網 endpoint", async () => {

@@ -198,11 +198,62 @@ function isPrivateIpv6(hostname: string): boolean {
     return true;
   }
 
-  return (
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    normalized.startsWith("fe80:")
+  if (normalized.startsWith("fc") || normalized.startsWith("fd")) {
+    return true;
+  }
+
+  if (isIpv6LinkLocalAddress(normalized)) {
+    return true;
+  }
+
+  const mappedIpv4 = extractMappedIpv4Address(normalized);
+  if (mappedIpv4 && isPrivateIpv4(mappedIpv4)) {
+    return true;
+  }
+
+  return false;
+}
+
+function isIpv6LinkLocalAddress(hostname: string): boolean {
+  const firstHextet = hostname.split(":")[0];
+  if (!firstHextet) {
+    return false;
+  }
+
+  const parsed = Number.parseInt(firstHextet, 16);
+  if (!Number.isFinite(parsed)) {
+    return false;
+  }
+
+  return parsed >= 0xfe80 && parsed <= 0xfebf;
+}
+
+function extractMappedIpv4Address(hostname: string): string | null {
+  const dottedMatched = hostname.match(
+    /(?:^|:)ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i,
   );
+  if (dottedMatched) {
+    return dottedMatched[1];
+  }
+
+  const hexMatched = hostname.match(/(?:^|:)ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (!hexMatched) {
+    return null;
+  }
+
+  const upper = Number.parseInt(hexMatched[1], 16);
+  const lower = Number.parseInt(hexMatched[2], 16);
+  if (!Number.isFinite(upper) || !Number.isFinite(lower)) {
+    return null;
+  }
+
+  const octets = [
+    (upper >> 8) & 0xff,
+    upper & 0xff,
+    (lower >> 8) & 0xff,
+    lower & 0xff,
+  ];
+  return octets.join(".");
 }
 
 function defaultResponseMapper(payload: unknown): SearchProviderResultItem[] {
